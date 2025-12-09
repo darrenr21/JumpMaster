@@ -1,11 +1,13 @@
 using UnityEngine;
-using UnityEngine.UI;
+using TMPro;
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager instance;
-    public Text scoreText;
+    public TextMeshProUGUI scoreText;
+    public GameObject gameOverPanel;
     private int score = 0;
+    private bool isGameOver = false;
 
     void Awake()
     {
@@ -15,12 +17,16 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         UpdateScoreText();
+        Time.timeScale = 1;
     }
 
     public void AddScore(int amount)
     {
-        score += amount;
-        UpdateScoreText();
+        if (!isGameOver)
+        {
+            score += amount;
+            UpdateScoreText();
+        }
     }
 
     void UpdateScoreText()
@@ -28,6 +34,17 @@ public class GameManager : MonoBehaviour
         if (scoreText != null)
         {
             scoreText.text = "Score: " + score;
+        }
+    }
+
+    public void GameOver()
+    {
+        isGameOver = true;
+        Time.timeScale = 0;
+
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(true);
         }
     }
 }
