@@ -19,6 +19,11 @@ public class ReversePortal : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
+            if (AudioManager.instance != null)
+            {
+                AudioManager.instance.PlayPortal();
+            }
+
             PlayerController player = other.GetComponent<PlayerController>();
 
             ObstacleSpawner spawner = FindFirstObjectByType<ObstacleSpawner>();
