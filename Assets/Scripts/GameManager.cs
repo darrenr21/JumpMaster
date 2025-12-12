@@ -4,11 +4,15 @@ using TMPro;
 public class GameManager : MonoBehaviour
 {
     public static GameManager instance;
+    public static float gameSpeed = 1f;
+
     public TextMeshProUGUI scoreText;
     public TextMeshProUGUI highScoreText;
     public TextMeshProUGUI redCoinText;
     public GameObject gameOverPanel;
     public TextMeshProUGUI finalScoreText;
+    public TextMeshProUGUI modeText;
+    public TextMeshProUGUI worldText;
     public GameObject redCoinPrefab;
 
     private int score = 0;
@@ -18,6 +22,12 @@ public class GameManager : MonoBehaviour
     private int redCoinsTotal = 0;
     private bool redCoinChallengeActive = false;
     private bool isGameOver = false;
+    private int lastSpeedIncreaseScore = 0;
+    private int currentWorld = 0;
+
+    // Special modes
+    public bool isGravityFlipped = false;
+    public bool isReverseMode = false;
 
     void Awake()
     {
@@ -26,9 +36,14 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        gameSpeed = 1f;
+        lastSpeedIncreaseScore = 0;
+        isGravityFlipped = false;
+        isReverseMode = false;
         highScore = PlayerPrefs.GetInt("HighScore", 0);
         UpdateScoreText();
         UpdateHighScoreText();
+        UpdateWorldText();
         if (redCoinText != null)
         {
             redCoinText.gameObject.SetActive(false);
@@ -42,7 +57,38 @@ public class GameManager : MonoBehaviour
         {
             score += amount * scoreMultiplier;
             UpdateScoreText();
+            CheckSpeedIncrease();
+            UpdateWorldText();
         }
+    }
+
+    void CheckSpeedIncrease()
+    {
+        int scoreThreshold = lastSpeedIncreaseScore + 5;
+        if (score >= scoreThreshold)
+        {
+            gameSpeed += 0.20f;
+            lastSpeedIncreaseScore = scoreThreshold;
+        }
+    }
+
+    public void StartGravityFlipMode()
+    {
+        isGravityFlipped = true;
+        UpdateModeText();
+    }
+
+    public void StartReverseMode()
+    {
+        isReverseMode = true;
+        UpdateModeText();
+    }
+
+    public void StopSpecialModes()
+    {
+        isGravityFlipped = false;
+        isReverseMode = false;
+        UpdateModeText();
     }
 
     public void StartRedCoinChallenge(Vector3 ringPosition)
@@ -64,13 +110,24 @@ public class GameManager : MonoBehaviour
 
     void SpawnRedCoins(Vector3 startPosition)
     {
-        // Spawn 8 red coins in a collectible wave pattern
-        float[] yPositions = { -1f, 0.5f, 1.5f, 0.5f, -0.5f, 1f, 2f, 0f };
+        float[] yPositions = { 0f, 1.5f, 0f, -1.5f, 0f, 1.5f, 0f, -1.5f };
 
         for (int i = 0; i < 8; i++)
         {
+            float xOffset;
+            if (isReverseMode)
+            {
+                // Spawn coins to the LEFT of the ring (toward player on right)
+                xOffset = -4f - (i * 3f);
+            }
+            else
+            {
+                // Spawn coins to the RIGHT of the ring (toward player on left)
+                xOffset = 4f + (i * 3f);
+            }
+
             Vector3 spawnPos = new Vector3(
-                startPosition.x + 3f + (i * 2f),
+                startPosition.x + xOffset,
                 startPosition.y + yPositions[i],
                 0
             );
@@ -107,12 +164,6 @@ public class GameManager : MonoBehaviour
         if (redCoinChallengeActive)
         {
             redCoinsTotal--;
-
-            // If not enough coins left to complete challenge
-            if (redCoinsTotal < 8 && redCoinsCollected < redCoinsTotal)
-            {
-                // Challenge continues but can't win anymore
-            }
         }
     }
 
@@ -170,6 +221,12 @@ public class GameManager : MonoBehaviour
     public void GameOver()
     {
         isGameOver = true;
+
+        if (AudioManager.instance != null)
+        {
+            AudioManager.instance.PlayGameOver();
+        }
+
         Time.timeScale = 0;
 
         if (score > highScore)
@@ -189,4 +246,65 @@ public class GameManager : MonoBehaviour
             gameOverPanel.SetActive(true);
         }
     }
+
+    void UpdateModeText()
+    {
+        if (modeText == null) return;
+
+        if (isReverseMode)
+        {
+            modeText.text = "REVERSE MODE";
+            modeText.color = Color.red;
+        }
+        else if (isGravityFlipped)
+        {
+            modeText.text = "GRAVITY FLIP";
+            modeText.color = new Color(0.6f, 0f, 1f); // Purple
+        }
+        else
+        {
+            modeText.text = "";
+        }
+    }
+
+    void UpdateWorldText()
+    {
+        if (worldText == null) return;
+
+        int newWorld = score / 50;
+
+        if (newWorld != currentWorld)
+        {
+            currentWorld = newWorld;
+        }
+
+        switch (currentWorld)
+        {
+            case 0:
+                worldText.text = "World: Sky";
+                worldText.color = Color.white;
+                break;
+            case 1:
+                worldText.text = "World: Sunset";
+                worldText.color = new Color(1f, 0.5f, 0f); // Orange
+                break;
+            case 2:
+                worldText.text = "World: Night";
+                worldText.color = new Color(0.5f, 0.5f, 1f); // Light blue
+                break;
+            case 3:
+                worldText.text = "World: Space";
+                worldText.color = new Color(1f, 0f, 1f); // Pink/Magenta
+                break;
+            default:
+                worldText.text = "World: Chaos";
+                worldText.color = new Color(
+                    Random.Range(0.5f, 1f),
+                    Random.Range(0.5f, 1f),
+                    Random.Range(0.5f, 1f)
+                );
+                break;
+        }
+    }
+
 }

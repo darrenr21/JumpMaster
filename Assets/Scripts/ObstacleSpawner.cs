@@ -2,33 +2,115 @@ using UnityEngine;
 
 public class ObstacleSpawner : MonoBehaviour
 {
+    [Header("Static Obstacles")]
     public GameObject obstaclePrefab;
-    public GameObject flyingObstaclePrefab;
+    public GameObject ceilingObstaclePrefab;
+
+    [Header("Moving Obstacles")]
+    public GameObject movingGroundObstaclePrefab;
+    public GameObject movingCeilingObstaclePrefab;
+    public float movingObstacleScaleSpeed = 2f;
+
+    [Header("Rotating Obstacles")]
+    public GameObject rotatingObstaclePrefab;
+    public float rotatingObstacleSpeed = 100f;
+
+    [Header("Portals")]
+    public GameObject purplePortalPrefab;
+    public GameObject redPortalPrefab;
+    public GameObject bluePortalPrefab;
+    public GameObject blueReversePortalPrefab;
+    public float portalSpawnInterval = 20f;
+    public float bluePortalDelay = 30f;
+    public float reverseSpawnX = -15f;
+
+    [Header("Collectibles")]
     public GameObject coinPrefab;
     public GameObject redRingPrefab;
+
+    [Header("Power-ups")]
     public GameObject shieldPrefab;
     public GameObject magnetPrefab;
     public GameObject shrinkPrefab;
 
+    [Header("Spawn Timing")]
     public float obstacleSpawnInterval = 1.5f;
+    public float powerUpSpawnInterval = 10f;
     public float redRingSpawnInterval = 30f;
 
+    [Header("Gap Settings")]
+    public float gapSize = 3f;
+    public float groundY = -4f;
+    public float ceilingY = 4f;
+    public float minObstacleHeight = 1f;
+    public float maxObstacleHeight = 4f;
+
+    [Header("Obstacle Set Chances")]
+    [Range(0, 100)] public int staticGapChance = 40;
+    [Range(0, 100)] public int movingGapChance = 30;
+    [Range(0, 100)] public int rotatingObstacleChance = 30;
+
     private float obstacleTimer;
+    private float powerUpTimer;
     private float redRingTimer;
-    private float lastObstacleY;
-    private bool lastWasFlying;
+    private float portalTimer;
+    private float bluePortalTimer;
+    private bool specialModeActive = false;
+    private bool waitingForBluePortal = false;
+    private float lastGapBottomY;
+    private float lastGapTopY;
+    private float portalPauseTimer = 0f;
+    private bool isPaused = false;
+    private bool lastPortalWasPurple = false;
 
     void Update()
     {
+        if (isPaused)
+        {
+            portalPauseTimer -= Time.deltaTime;
+            if (portalPauseTimer <= 0)
+            {
+                isPaused = false;
+            }
+            if (waitingForBluePortal)
+            {
+                bluePortalTimer += Time.deltaTime;
+                if (bluePortalTimer >= bluePortalDelay)
+                {
+                    SpawnBluePortal();
+                    bluePortalTimer = 0f;
+                    waitingForBluePortal = false;
+                }
+            }
+            return;
+        }
+
         obstacleTimer += Time.deltaTime;
+        powerUpTimer += Time.deltaTime;
         redRingTimer += Time.deltaTime;
+        portalTimer += Time.deltaTime;
+
+        if (waitingForBluePortal)
+        {
+            bluePortalTimer += Time.deltaTime;
+            if (bluePortalTimer >= bluePortalDelay)
+            {
+                SpawnBluePortal();
+                bluePortalTimer = 0f;
+                waitingForBluePortal = false;
+            }
+        }
 
         if (obstacleTimer >= obstacleSpawnInterval)
         {
-            SpawnObstacle();
-            SpawnCoinAfterObstacle();
-            TrySpawnPowerUp();
+            SpawnObstacleSet();
             obstacleTimer = 0f;
+        }
+
+        if (powerUpTimer >= powerUpSpawnInterval)
+        {
+            SpawnPowerUp();
+            powerUpTimer = 0f;
         }
 
         if (redRingTimer >= redRingSpawnInterval)
@@ -36,93 +118,234 @@ public class ObstacleSpawner : MonoBehaviour
             SpawnRedRing();
             redRingTimer = 0f;
         }
-    }
 
-    void SpawnObstacle()
-    {
-        float random = Random.value;
-
-        if (random < 0.6f)
+        if (portalTimer >= portalSpawnInterval && !specialModeActive && !waitingForBluePortal && !GameManager.instance.isReverseMode && !GameManager.instance.isGravityFlipped)
         {
-            // Ground obstacle
-            Instantiate(obstaclePrefab, transform.position, Quaternion.identity);
-            lastWasFlying = false;
-            lastObstacleY = transform.position.y;
-        }
-        else
-        {
-            // Flying obstacle
-            float flyingY = Random.Range(1.5f, 3f);
-            Vector3 flyingPos = transform.position + new Vector3(0, flyingY, 0);
-            Instantiate(flyingObstaclePrefab, flyingPos, Quaternion.identity);
-            lastWasFlying = true;
-            lastObstacleY = flyingPos.y;
+            SpawnSpecialPortal();
+            portalTimer = 0f;
         }
     }
 
-    void SpawnCoinAfterObstacle()
+    public void StartPortalPause(float duration)
     {
-        // Spawn coin between this obstacle and the next
-        // Position it halfway between obstacles
-        float coinX = transform.position.x - (obstacleSpawnInterval * 2.5f);
+        isPaused = true;
+        portalPauseTimer = duration;
+    }
 
-        // Coin Y position: above ground but reachable
-        // If last obstacle was flying, put coin lower so player can get it without jumping into obstacle
-        float coinY;
-        if (lastWasFlying)
+    void SpawnSpecialPortal()
+    {
+        float middleY = (groundY + ceilingY) / 2f;
+        Vector3 pos = new Vector3(transform.position.x, middleY, 0);
+
+        if (lastPortalWasPurple)
         {
-            coinY = Random.Range(0f, 1f); // Lower coins when flying obstacle
+            Instantiate(redPortalPrefab, pos, Quaternion.identity);
+            lastPortalWasPurple = false;
         }
         else
         {
-            coinY = Random.Range(0.5f, 2.5f); // Higher coins when ground obstacle
+            Instantiate(purplePortalPrefab, pos, Quaternion.identity);
+            lastPortalWasPurple = true;
         }
 
-        Vector3 coinPosition = new Vector3(transform.position.x + 0.75f, transform.position.y + coinY, 0);
+        specialModeActive = true;
+        waitingForBluePortal = true;
+    }
+
+    void SpawnBluePortal()
+    {
+        float middleY = (groundY + ceilingY) / 2f;
+
+        if (GameManager.instance.isReverseMode)
+        {
+            Vector3 pos = new Vector3(reverseSpawnX, middleY, 0);
+            Instantiate(blueReversePortalPrefab, pos, Quaternion.identity);
+        }
+        else
+        {
+            Vector3 pos = new Vector3(transform.position.x, middleY, 0);
+            Instantiate(bluePortalPrefab, pos, Quaternion.identity);
+        }
+
+        specialModeActive = false;
+    }
+
+    void SpawnObstacleSet()
+    {
+        int random = Random.Range(0, 100);
+
+        float spawnX;
+        if (GameManager.instance.isReverseMode)
+        {
+            spawnX = reverseSpawnX;
+        }
+        else
+        {
+            spawnX = transform.position.x;
+        }
+
+        if (random < staticGapChance)
+        {
+            SpawnStaticGap(spawnX);
+            SpawnCoinInGap(spawnX, 0.75f);
+        }
+        else if (random < staticGapChance + movingGapChance)
+        {
+            SpawnMovingGap(spawnX);
+            SpawnCoinInGap(spawnX, 0.75f);
+        }
+        else
+        {
+            SpawnRotatingObstacle(spawnX);
+        }
+    }
+
+    void SpawnStaticGap(float spawnX)
+    {
+        float groundObstacleHeight = Random.Range(minObstacleHeight, maxObstacleHeight);
+        float groundObstacleTopY = groundY + groundObstacleHeight;
+
+        lastGapBottomY = groundObstacleTopY;
+        lastGapTopY = groundObstacleTopY + gapSize;
+
+        float ceilingObstacleHeight = ceilingY - lastGapTopY;
+
+        if (ceilingObstacleHeight < minObstacleHeight)
+        {
+            ceilingObstacleHeight = minObstacleHeight;
+            lastGapTopY = ceilingY - ceilingObstacleHeight;
+        }
+
+        Vector3 groundPos = new Vector3(spawnX, groundY + (groundObstacleHeight / 2f), 0);
+        GameObject groundObs = Instantiate(obstaclePrefab, groundPos, Quaternion.identity);
+        groundObs.transform.localScale = new Vector3(1, groundObstacleHeight, 1);
+
+        Vector3 ceilingPos = new Vector3(spawnX, ceilingY - (ceilingObstacleHeight / 2f), 0);
+        GameObject ceilingObs = Instantiate(ceilingObstaclePrefab, ceilingPos, Quaternion.identity);
+        ceilingObs.transform.localScale = new Vector3(1, ceilingObstacleHeight, 1);
+    }
+
+    void SpawnMovingGap(float spawnX)
+    {
+        float totalSpace = ceilingY - groundY;
+        float availableSpace = totalSpace - gapSize;
+
+        float startGroundHeight = Random.Range(minObstacleHeight, maxObstacleHeight);
+        float startCeilingHeight = availableSpace - startGroundHeight;
+
+        float minHeight = minObstacleHeight;
+        float maxHeight = availableSpace - minObstacleHeight;
+
+        Vector3 groundPos = new Vector3(spawnX, groundY + (startGroundHeight / 2f), 0);
+        GameObject groundObs = Instantiate(movingGroundObstaclePrefab, groundPos, Quaternion.identity);
+        groundObs.transform.localScale = new Vector3(1, startGroundHeight, 1);
+
+        MovingObstacle groundMoving = groundObs.GetComponent<MovingObstacle>();
+        groundMoving.scaleSpeed = movingObstacleScaleSpeed;
+        groundMoving.minScaleY = minHeight;
+        groundMoving.maxScaleY = maxHeight;
+        groundMoving.isGroundObstacle = true;
+        groundMoving.groundY = groundY;
+        groundMoving.ceilingY = ceilingY;
+        groundMoving.isGrowing = Random.value > 0.5f;
+
+        Vector3 ceilingPos = new Vector3(spawnX, ceilingY - (startCeilingHeight / 2f), 0);
+        GameObject ceilingObs = Instantiate(movingCeilingObstaclePrefab, ceilingPos, Quaternion.identity);
+        ceilingObs.transform.localScale = new Vector3(1, startCeilingHeight, 1);
+
+        MovingObstacle ceilingMoving = ceilingObs.GetComponent<MovingObstacle>();
+        ceilingMoving.scaleSpeed = movingObstacleScaleSpeed;
+        ceilingMoving.minScaleY = minHeight;
+        ceilingMoving.maxScaleY = maxHeight;
+        ceilingMoving.isGroundObstacle = false;
+        ceilingMoving.groundY = groundY;
+        ceilingMoving.ceilingY = ceilingY;
+        ceilingMoving.isGrowing = !groundMoving.isGrowing;
+
+        lastGapBottomY = groundY + startGroundHeight;
+        lastGapTopY = lastGapBottomY + gapSize;
+    }
+
+    void SpawnRotatingObstacle(float spawnX)
+    {
+        float minY = groundY + 2f;
+        float maxY = ceilingY - 2f;
+        float randomY = Random.Range(minY, maxY);
+
+        Vector3 pos = new Vector3(spawnX, randomY, 0);
+
+        GameObject rotatingObs = Instantiate(rotatingObstaclePrefab, pos, Quaternion.identity);
+
+        RotatingObstacle rotating = rotatingObs.GetComponent<RotatingObstacle>();
+        rotating.rotationSpeed = rotatingObstacleSpeed;
+
+        lastGapBottomY = groundY + 1f;
+        lastGapTopY = ceilingY - 1f;
+    }
+
+    void SpawnCoinInGap(float spawnX, float xOffset)
+    {
+        float coinY = (lastGapBottomY + lastGapTopY) / 2f;
+
+        float coinX;
+        if (GameManager.instance.isReverseMode)
+        {
+            coinX = spawnX - xOffset;
+        }
+        else
+        {
+            coinX = spawnX + xOffset;
+        }
+
+        Vector3 coinPosition = new Vector3(coinX, coinY, 0);
         Instantiate(coinPrefab, coinPosition, Quaternion.identity);
-    }
-
-    void TrySpawnPowerUp()
-    {
-        float random = Random.value;
-
-        // 25% chance to spawn a power-up after an obstacle
-        if (random < 0.25f)
-        {
-            SpawnPowerUp();
-        }
     }
 
     void SpawnPowerUp()
     {
         float random = Random.value;
 
-        // Safe Y position: above ground, not too high
-        float safeY = Random.Range(1f, 2.5f);
-        // Offset X so it doesn't overlap with obstacle
-        Vector3 pos = transform.position + new Vector3(1.5f, safeY, 0);
+        float spawnX;
+        if (GameManager.instance.isReverseMode)
+        {
+            spawnX = reverseSpawnX;
+        }
+        else
+        {
+            spawnX = transform.position.x;
+        }
+
+        float safeY = Random.Range(lastGapBottomY + 0.5f, lastGapTopY - 0.5f);
+        Vector3 pos = new Vector3(spawnX + 1.5f, safeY, 0);
 
         if (random < 0.4f)
         {
-            // 40% - shield
             Instantiate(shieldPrefab, pos, Quaternion.identity);
         }
         else if (random < 0.8f)
         {
-            // 40% - magnet
             Instantiate(magnetPrefab, pos, Quaternion.identity);
         }
         else
         {
-            // 20% - shrink
             Instantiate(shrinkPrefab, pos, Quaternion.identity);
         }
     }
 
     void SpawnRedRing()
     {
-        // Spawn red ring at a safe height, offset from obstacles
-        Vector3 pos = transform.position + new Vector3(2f, 1.5f, 0);
+        float spawnX;
+        if (GameManager.instance.isReverseMode)
+        {
+            spawnX = reverseSpawnX;
+        }
+        else
+        {
+            spawnX = transform.position.x;
+        }
+
+        float safeY = (lastGapBottomY + lastGapTopY) / 2f;
+        Vector3 pos = new Vector3(spawnX + 2f, safeY, 0);
         Instantiate(redRingPrefab, pos, Quaternion.identity);
     }
 }

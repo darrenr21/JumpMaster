@@ -2,11 +2,12 @@ using UnityEngine;
 
 public class BackgroundScroller : MonoBehaviour
 {
-    public float scrollSpeed = 2f;
+    public float baseScrollSpeed = 2f;
     public float backgroundWidth = 25f;
 
     void Update()
     {
+        float scrollSpeed = baseScrollSpeed * GameManager.gameSpeed;
         transform.position += Vector3.left * scrollSpeed * Time.deltaTime;
 
         if (transform.position.x <= -backgroundWidth)
