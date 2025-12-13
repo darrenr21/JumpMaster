@@ -1760,7 +1760,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameMusic
   gameMusic: {fileID: 8300000, guid: 80f4f836f16eb51408c4939c31d60afb, type: 3}
-  volume: 0.5
+  volume: 0.057
 --- !u!1 &840270083
 GameObject:
   m_ObjectHideFlags: 0
