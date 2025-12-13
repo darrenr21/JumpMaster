@@ -7,7 +7,6 @@ public class Coin : MonoBehaviour
 
     void Start()
     {
-        // Remember if this coin was spawned during reverse mode
         isReverseCoin = GameManager.instance.isReverseMode;
     }
 

@@ -23,6 +23,7 @@ public class PlayerController : MonoBehaviour
     private bool isTransitioning = false;
     private float targetXPosition;
     private float portalImmunityTimer = 0f;
+
     private SpriteRenderer spriteRenderer;
 
     void Start()
@@ -51,16 +52,16 @@ public class PlayerController : MonoBehaviour
             float flash = Mathf.Sin(Time.time * 20f);
             if (flash > 0)
             {
-                spriteRenderer.color = new Color(1f, 1f, 1f, 0.5f); // Semi-transparent
+                spriteRenderer.color = new Color(1f, 1f, 1f, 0.5f);
             }
             else
             {
-                spriteRenderer.color = Color.white; // Normal
+                spriteRenderer.color = Color.white;
             }
         }
         else if (isTransitioning)
         {
-            // Also flash during transition
+            // Flash during transition
             float flash = Mathf.Sin(Time.time * 20f);
             if (flash > 0)
             {
@@ -73,21 +74,22 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // Make sure color is normal when not immune
             spriteRenderer.color = Color.white;
         }
 
-        // Handle transitioning between positions
+        // Handle transitioning between X positions only
         if (isTransitioning)
         {
             rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
-            float newX = Mathf.MoveTowards(transform.position.x, targetXPosition, 15f * Time.deltaTime);
-            transform.position = new Vector3(newX, transform.position.y, transform.position.z);
+            float currentX = transform.position.x;
+            float newX = Mathf.MoveTowards(currentX, targetXPosition, 100f * Time.deltaTime);
 
-            if (Mathf.Abs(transform.position.x - targetXPosition) < 0.1f)
+            // Only change X, keep current Y
+            rb.MovePosition(new Vector2(newX, transform.position.y));
+
+            if (Mathf.Abs(newX - targetXPosition) < 0.1f)
             {
-                transform.position = new Vector3(targetXPosition, transform.position.y, transform.position.z);
                 isTransitioning = false;
                 rb.constraints = RigidbodyConstraints2D.FreezePositionX | RigidbodyConstraints2D.FreezeRotation;
             }
@@ -106,6 +108,7 @@ public class PlayerController : MonoBehaviour
 
     void Jump()
     {
+        // Play jump sound
         if (AudioManager.instance != null)
         {
             AudioManager.instance.PlayJump();
@@ -126,6 +129,7 @@ public class PlayerController : MonoBehaviour
         isGravityFlipped = true;
         rb.gravityScale = -normalGravity;
 
+        // Flip sprite upside down
         Vector3 scale = transform.localScale;
         scale.y = -Mathf.Abs(scale.y);
         transform.localScale = scale;
@@ -136,6 +140,7 @@ public class PlayerController : MonoBehaviour
         isGravityFlipped = false;
         rb.gravityScale = normalGravity;
 
+        // Flip sprite right side up
         Vector3 scale = transform.localScale;
         scale.y = Mathf.Abs(scale.y);
         transform.localScale = scale;
@@ -145,12 +150,22 @@ public class PlayerController : MonoBehaviour
     {
         isTransitioning = true;
         targetXPosition = reverseXPosition;
+
+        // Flip sprite to face left (moving backwards)
+        Vector3 scale = transform.localScale;
+        scale.x = -Mathf.Abs(scale.x);
+        transform.localScale = scale;
     }
 
     public void StopReverseMode()
     {
         isTransitioning = true;
         targetXPosition = normalXPosition;
+
+        // Flip sprite to face right (normal direction)
+        Vector3 scale = transform.localScale;
+        scale.x = Mathf.Abs(scale.x);
+        transform.localScale = scale;
     }
 
     public void StartPortalImmunity(float duration)
@@ -175,6 +190,15 @@ public class PlayerController : MonoBehaviour
                 {
                     AudioManager.instance.PlayShieldBreak();
                 }
+
+                // Update power-up text when shield breaks
+                if (hasMagnet)
+                    GameManager.instance.UpdatePowerUpText("Magnet");
+                else if (isShrunk)
+                    GameManager.instance.UpdatePowerUpText("Shrink");
+                else
+                    GameManager.instance.UpdatePowerUpText("None");
+
                 Destroy(collision.gameObject);
             }
             else
@@ -198,6 +222,7 @@ public class PlayerController : MonoBehaviour
         {
             case PowerUp.PowerUpType.Shield:
                 hasShield = true;
+                GameManager.instance.UpdatePowerUpText("Shield");
                 break;
             case PowerUp.PowerUpType.Magnet:
                 StartCoroutine(MagnetPowerUp(duration));
@@ -211,17 +236,58 @@ public class PlayerController : MonoBehaviour
     System.Collections.IEnumerator MagnetPowerUp(float duration)
     {
         hasMagnet = true;
+        GameManager.instance.UpdatePowerUpText("Magnet");
+
         yield return new WaitForSeconds(duration);
+
         hasMagnet = false;
+
+        // Check if any other power-up is active
+        if (hasShield)
+            GameManager.instance.UpdatePowerUpText("Shield");
+        else if (isShrunk)
+            GameManager.instance.UpdatePowerUpText("Shrink");
+        else
+            GameManager.instance.UpdatePowerUpText("None");
     }
 
     System.Collections.IEnumerator ShrinkPowerUp(float duration)
     {
         isShrunk = true;
-        transform.localScale = shrunkScale;
+        GameManager.instance.UpdatePowerUpText("Shrink");
+
+        // Remember current orientation
+        float currentXSign = Mathf.Sign(transform.localScale.x);
+        float currentYSign = Mathf.Sign(transform.localScale.y);
+
+        // Apply shrink while keeping orientation
+        transform.localScale = new Vector3(
+            shrunkScale.x * currentXSign,
+            shrunkScale.y * currentYSign,
+            shrunkScale.z
+        );
+
         yield return new WaitForSeconds(duration);
+
         isShrunk = false;
-        transform.localScale = normalScale;
+
+        // Restore normal size while keeping current orientation
+        float endXSign = Mathf.Sign(transform.localScale.x);
+        float endYSign = Mathf.Sign(transform.localScale.y);
+
+        transform.localScale = new Vector3(
+            normalScale.x * endXSign,
+            normalScale.y * endYSign,
+            normalScale.z
+        );
+
+        // Check if any other power-up is active
+        if (hasShield)
+            GameManager.instance.UpdatePowerUpText("Shield");
+        else if (hasMagnet)
+            GameManager.instance.UpdatePowerUpText("Magnet");
+        else
+            GameManager.instance.UpdatePowerUpText("None");
     }
 
     void AttractCoins()

@@ -17,7 +17,7 @@ public class ObstacleSpawner : MonoBehaviour
 
     [Header("Portals")]
     public GameObject purplePortalPrefab;
-    public GameObject redPortalPrefab;
+    public GameObject greenPortalPrefab;
     public GameObject bluePortalPrefab;
     public GameObject blueReversePortalPrefab;
     public float portalSpawnInterval = 20f;
@@ -40,8 +40,8 @@ public class ObstacleSpawner : MonoBehaviour
 
     [Header("Gap Settings")]
     public float gapSize = 3f;
-    public float groundY = -4f;
-    public float ceilingY = 4f;
+    public float groundY = -4.5f;
+    public float ceilingY = 5.5f;
     public float minObstacleHeight = 1f;
     public float maxObstacleHeight = 4f;
 
@@ -63,8 +63,37 @@ public class ObstacleSpawner : MonoBehaviour
     private bool isPaused = false;
     private bool lastPortalWasPurple = false;
 
+    private bool redCoinChallengeActive = false;
+    private float redCoinPauseTimer = 0f;
+
     void Update()
     {
+        // Handle red coin challenge pause
+        if (redCoinChallengeActive)
+        {
+            redCoinPauseTimer -= Time.deltaTime;
+            if (redCoinPauseTimer <= 0)
+            {
+                redCoinChallengeActive = false;
+            }
+
+            // Still update portal and blue portal timers during red coin challenge
+            if (waitingForBluePortal)
+            {
+                bluePortalTimer += Time.deltaTime;
+                if (bluePortalTimer >= bluePortalDelay)
+                {
+                    SpawnBluePortal();
+                    bluePortalTimer = 0f;
+                    waitingForBluePortal = false;
+                }
+            }
+
+            // Don't spawn obstacles during red coin challenge
+            return;
+        }
+
+        // Handle portal pause
         if (isPaused)
         {
             portalPauseTimer -= Time.deltaTime;
@@ -132,14 +161,51 @@ public class ObstacleSpawner : MonoBehaviour
         portalPauseTimer = duration;
     }
 
+    public void StartRedCoinChallengePause(float duration)
+    {
+        redCoinChallengeActive = true;
+        redCoinPauseTimer = duration;
+
+        // Destroy all existing obstacles
+        DestroyAllObstacles();
+    }
+
+    public void DestroyAllObstacles()
+    {
+        // Find and destroy all obstacles
+        GameObject[] obstacles = GameObject.FindGameObjectsWithTag("Obstacle");
+        foreach (GameObject obstacle in obstacles)
+        {
+            Destroy(obstacle);
+        }
+
+        // Also destroy regular coins (not red coins)
+        GameObject[] coins = GameObject.FindGameObjectsWithTag("Coin");
+        foreach (GameObject coin in coins)
+        {
+            // Only destroy if it's not a red coin
+            if (coin.GetComponent<RedCoin>() == null)
+            {
+                Destroy(coin);
+            }
+        }
+
+        // Destroy power-ups
+        GameObject[] powerUps = GameObject.FindGameObjectsWithTag("PowerUp");
+        foreach (GameObject powerUp in powerUps)
+        {
+            Destroy(powerUp);
+        }
+    }
+
     void SpawnSpecialPortal()
     {
-        float middleY = (groundY + ceilingY) / 2f;
+        float middleY = 1f; // Slightly higher
         Vector3 pos = new Vector3(transform.position.x, middleY, 0);
 
         if (lastPortalWasPurple)
         {
-            Instantiate(redPortalPrefab, pos, Quaternion.identity);
+            Instantiate(greenPortalPrefab, pos, Quaternion.identity);
             lastPortalWasPurple = false;
         }
         else
@@ -154,7 +220,7 @@ public class ObstacleSpawner : MonoBehaviour
 
     void SpawnBluePortal()
     {
-        float middleY = (groundY + ceilingY) / 2f;
+        float middleY = 1f; // Slightly higher
 
         if (GameManager.instance.isReverseMode)
         {

@@ -19,6 +19,12 @@ public class AudioManager : MonoBehaviour
     {
         instance = this;
         audioSource = GetComponent<AudioSource>();
+
+        // Add AudioSource if missing
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
     }
 
     public void PlayJump()

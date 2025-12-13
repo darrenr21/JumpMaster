@@ -14,13 +14,15 @@ public class GameManager : MonoBehaviour
     public TextMeshProUGUI modeText;
     public TextMeshProUGUI worldText;
     public GameObject redCoinPrefab;
+    public TextMeshProUGUI powerUpText;
 
     private int score = 0;
     private int highScore = 0;
     private int scoreMultiplier = 1;
     private int redCoinsCollected = 0;
-    private int redCoinsTotal = 0;
+    private int redCoinsTotal = 8;
     private bool redCoinChallengeActive = false;
+    private bool redCoinMissed = false;
     private bool isGameOver = false;
     private int lastSpeedIncreaseScore = 0;
     private int currentWorld = 0;
@@ -44,6 +46,7 @@ public class GameManager : MonoBehaviour
         UpdateScoreText();
         UpdateHighScoreText();
         UpdateWorldText();
+        UpdatePowerUpText("None");
         if (redCoinText != null)
         {
             redCoinText.gameObject.SetActive(false);
@@ -91,21 +94,26 @@ public class GameManager : MonoBehaviour
         UpdateModeText();
     }
 
-    public void StartRedCoinChallenge(Vector3 ringPosition)
+    public void StartRedCoinChallenge(Vector3 startPosition)
     {
-        if (!redCoinChallengeActive)
+        redCoinChallengeActive = true;
+        redCoinsCollected = 0;
+        redCoinMissed = false;
+
+        if (redCoinText != null)
         {
-            redCoinChallengeActive = true;
-            redCoinsCollected = 0;
-            redCoinsTotal = 8;
+            redCoinText.gameObject.SetActive(true);
             UpdateRedCoinText();
-            if (redCoinText != null)
-            {
-                redCoinText.gameObject.SetActive(true);
-            }
-            SpawnRedCoins(ringPosition);
-            StartCoroutine(RedCoinTimer());
         }
+
+        // Pause obstacle spawning during red coin challenge
+        ObstacleSpawner spawner = FindFirstObjectByType<ObstacleSpawner>();
+        if (spawner != null)
+        {
+            spawner.StartRedCoinChallengePause(15f);
+        }
+
+        SpawnRedCoins(startPosition);
     }
 
     void SpawnRedCoins(Vector3 startPosition)
@@ -117,12 +125,10 @@ public class GameManager : MonoBehaviour
             float xOffset;
             if (isReverseMode)
             {
-                // Spawn coins to the LEFT of the ring (toward player on right)
                 xOffset = -4f - (i * 3f);
             }
             else
             {
-                // Spawn coins to the RIGHT of the ring (toward player on left)
                 xOffset = 4f + (i * 3f);
             }
 
@@ -163,7 +169,8 @@ public class GameManager : MonoBehaviour
     {
         if (redCoinChallengeActive)
         {
-            redCoinsTotal--;
+            redCoinMissed = true;
+            EndRedCoinChallenge(false);
         }
     }
 
@@ -259,7 +266,7 @@ public class GameManager : MonoBehaviour
         else if (isGravityFlipped)
         {
             modeText.text = "GRAVITY FLIP";
-            modeText.color = new Color(0.6f, 0f, 1f); // Purple
+            modeText.color = new Color(0.6f, 0f, 1f);
         }
         else
         {
@@ -286,15 +293,15 @@ public class GameManager : MonoBehaviour
                 break;
             case 1:
                 worldText.text = "World: Sunset";
-                worldText.color = new Color(1f, 0.5f, 0f); // Orange
+                worldText.color = new Color(1f, 0.5f, 0f);
                 break;
             case 2:
                 worldText.text = "World: Night";
-                worldText.color = new Color(0.5f, 0.5f, 1f); // Light blue
+                worldText.color = new Color(0.5f, 0.5f, 1f);
                 break;
             case 3:
                 worldText.text = "World: Space";
-                worldText.color = new Color(1f, 0f, 1f); // Pink/Magenta
+                worldText.color = new Color(1f, 0f, 1f);
                 break;
             default:
                 worldText.text = "World: Chaos";
@@ -307,4 +314,33 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public int GetCurrentWorld()
+    {
+        return score / 50;
+    }
+
+    public void UpdatePowerUpText(string powerUpName)
+    {
+        if (powerUpText != null)
+        {
+            powerUpText.text = "Power: " + powerUpName;
+
+            // Change color based on power-up
+            switch (powerUpName)
+            {
+                case "Shield":
+                    powerUpText.color = Color.cyan;
+                    break;
+                case "Magnet":
+                    powerUpText.color = Color.yellow;
+                    break;
+                case "Shrink":
+                    powerUpText.color = Color.green;
+                    break;
+                default:
+                    powerUpText.color = Color.white;
+                    break;
+            }
+        }
+    }
 }

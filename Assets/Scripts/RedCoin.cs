@@ -3,16 +3,27 @@ using UnityEngine;
 public class RedCoin : MonoBehaviour
 {
     public float baseSpeed = 5f;
+    public float rotationSpeed = 200f;
+    public float pulseSpeed = 5f;
     private bool isReverseCoin = false;
+    private Vector3 originalScale;
 
     void Start()
     {
         isReverseCoin = GameManager.instance.isReverseMode;
+        originalScale = transform.localScale;
     }
 
     void Update()
     {
         float moveSpeed = baseSpeed * GameManager.gameSpeed;
+
+        // Spin animation
+        transform.Rotate(0, 0, rotationSpeed * Time.deltaTime);
+
+        // Pulse animation
+        float pulse = 1f + Mathf.Sin(Time.time * pulseSpeed) * 0.2f;
+        transform.localScale = originalScale * pulse;
 
         if (isReverseCoin)
         {

@@ -12,9 +12,10 @@ GameObject:
   - component: {fileID: 8791556483337324328}
   - component: {fileID: 1066434062498618879}
   - component: {fileID: 6521207538958205972}
+  - component: {fileID: 1495978374687169905}
   m_Layer: 0
   m_Name: ShrinkPowerUp
-  m_TagString: Untagged
+  m_TagString: PowerUp
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -83,7 +84,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
+  m_Sprite: {fileID: -855298285791758126, guid: dc7478baa1d4c254cb88be4de4f5dc04, type: 3}
   m_Color: {r: 0, g: 0.99215686, b: 0.059014626, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -142,5 +143,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PowerUp
   powerUpType: 2
-  moveSpeed: 5
+  baseSpeed: 5
   duration: 5
+  bobSpeed: 3
+  bobHeight: 0.3
+--- !u!95 &1495978374687169905
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 89326701873925957}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 6d3a1fdfef4fca24d8a2b75b86ae9ec1, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
