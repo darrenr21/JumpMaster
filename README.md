@@ -144,7 +144,7 @@ git clone https://github.com/YOUR_USERNAME/JumpMaster.git
 
 **Darren Ravichandra**
 
-- GitHub: [@YOUR_USERNAME](https://github.com/darrenr21)
+- GitHub: [@darrenr21](https://github.com/darrenr21)
 
 ## 🙏 Acknowledgments
 
